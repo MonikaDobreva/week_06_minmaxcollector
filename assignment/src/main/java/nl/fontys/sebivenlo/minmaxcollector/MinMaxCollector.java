@@ -21,44 +21,53 @@ import static java.util.stream.Collector.Characteristics.*;
  */
 public class MinMaxCollector<T> implements Collector<T, MinMax<T>, Optional<MinMax<T>>> {
 
-    //Define fields
+    private Comparator<T> comp;
     /**
      * Min and max need a comparator.
      *
      * @param comparator to determine min and max of the stream
      */
     public MinMaxCollector( Comparator<T> comparator ) {
-        
+        this.comp = comparator;
     }
 
     @Override
     public Supplier<MinMax<T>> supplier() {
-        
-        return null;
+        return () -> new MinMax<>(comp);
     }
 
     @Override
     public BiConsumer<MinMax<T>, T> accumulator() {
-        
-        return null;
+        return MinMax::accept;
     }
 
     @Override
     public BinaryOperator<MinMax<T>> combiner() {
-        
-        return null;
+        return (a, b) -> {
+
+            if ((a.min == null && a.max == null) && (b.min == null && b.max == null)) {
+                return a;
+            }
+
+            a.accept(b.max);
+            a.accept(b.min);
+            return a;
+        };
     }
 
     @Override
     public Function<MinMax<T>, Optional<MinMax<T>>> finisher() {
-        
-        return null;
+        return (a) -> {
+            if (a.max == null && a.min == null) {
+                return Optional.empty();
+            }
+            return Optional.of(a);
+        };
     }
 
     @Override
     public Set<Collector.Characteristics> characteristics() {
-        
-        return null;
+        return Set.of(UNORDERED, CONCURRENT);
     }
 
     public static <T> MinMaxCollector<T> minmax( Comparator<T> comp ) {
@@ -91,8 +100,19 @@ public class MinMaxCollector<T> implements Collector<T, MinMax<T>, Optional<MinM
         }
 
         public void accept( E next ) {
-            //TODO implement accept.
-            
+            if (this.min == null) {
+                this.min = next;
+            }
+
+            if (this.max == null) {
+                this.max = next;
+            }
+
+            if (this.comparator.compare(this.min, next) > 0) {
+                this.min = next;
+            } else if (this.comparator.compare(this.max, next) < 0) {
+                this.max = next;
+            }
         }
     }
 }
